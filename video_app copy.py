@@ -7,6 +7,38 @@ import moviepy.editor as mp
 import zipfile
 from passlib.context import CryptContext
 
+# パスワードのハッシュ化
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# 認証設定
+names = ["User1","User2"]
+usernames = ["gateoneapp","fmvapp"]
+passwords = ["login-gate","login-one"]
+
+# ハッシュ化されたパスワードを生成
+hashed_passwords = [pwd_context.hash(password) for password in passwords]
+
+# 認証情報の設定
+credentials = {
+    "usernames": {
+        "gateoneapp": {"name": "User1", "password": hashed_passwords[0]},
+        "fmvapp": {"name": "User2", "password": hashed_passwords[1]}
+    }
+}
+
+authenticator = stauth.Authenticate(
+    credentials,
+    "some_cookie_name",
+    "some_signature_key",
+    cookie_expiry_days=30
+)
+
+name, authentication_status, username = authenticator.login("main", "main", fields=("username", "password"))
+
+if authentication_status:
+    # 認証成功時のコード
+
+    # ディレクトリの作成
     if not os.path.exists('uploads'):
         os.makedirs('uploads')
     if not os.path.exists('output'):
@@ -151,3 +183,14 @@ from passlib.context import CryptContext
         if 'converted_videos' in st.session_state:
             st.session_state.converted_videos = []
         st.experimental_rerun()
+
+elif authentication_status == False:
+    st.error("Username/password is incorrect")
+
+elif authentication_status == None:
+    st.warning("Please enter your username and password")
+
+# ログアウトボタン
+if st.button("Logout"):
+    authenticator.logout("main")
+    st.experimental_rerun()
