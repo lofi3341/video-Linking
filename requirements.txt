@@ -3,3 +3,4 @@ opencv-python
 moviepy
 streamlit-authenticator
 opencv-python-headless==4.6.0.66
+cv2
