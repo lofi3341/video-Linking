@@ -5,17 +5,9 @@ import os
 import numpy as np
 import moviepy.editor as mp
 import zipfile
-from passlib.context import CryptContext
 
-    if not os.path.exists('uploads'):
-        os.makedirs('uploads')
-    if not os.path.exists('output'):
-        os.makedirs('output')
-    if not os.path.exists('downloads'):
-        os.makedirs('downloads')
-
-    # 動画ファイルをアップロードする関数
-    def upload_videos(uploaded_files):
+# 動画ファイルをアップロードする関数
+def upload_videos(uploaded_files):
         saved_files = []
         for uploaded_file in uploaded_files:
             video_path = os.path.join('uploads', uploaded_file.name)
@@ -25,7 +17,7 @@ from passlib.context import CryptContext
         return saved_files
 
     # 動画を分割し、結合する関数
-    def process_and_merge_videos(video_paths):
+def process_and_merge_videos(video_paths):
         output_paths = []
         for video_path in video_paths:
             cap = cv2.VideoCapture(video_path)
@@ -55,14 +47,14 @@ from passlib.context import CryptContext
         return output_paths
 
     # 動画から音声を抽出する関数
-    def extract_audio(video_path):
+def extract_audio(video_path):
         clip = mp.VideoFileClip(video_path)
         audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
         clip.audio.write_audiofile(audio_path, codec='pcm_s16le')
         return audio_path
 
     # 音声を挿入する関数
-    def insert_audio(video_path, audio_path):
+def insert_audio(video_path, audio_path):
         video_clip = mp.VideoFileClip(video_path)
         audio_clip = mp.AudioFileClip(audio_path)
 
@@ -72,7 +64,7 @@ from passlib.context import CryptContext
         return output_path
 
     # 動画と音声を削除する関数
-    def delete_files():
+def delete_files():
         for file in os.listdir('uploads'):
             os.remove(os.path.join('uploads', file))
         for file in os.listdir('output'):
@@ -81,7 +73,7 @@ from passlib.context import CryptContext
             os.remove(os.path.join('downloads', file))
 
     # 動画を指定したサイズに変換する関数
-    def resize_video(video_path, width, height):
+def resize_video(video_path, width, height):
         clip = mp.VideoFileClip(video_path)
         resized_clip = clip.resize((width, height))
         output_path = os.path.join('output', f'resized_{os.path.basename(video_path)}')
@@ -89,7 +81,7 @@ from passlib.context import CryptContext
         return output_path
 
     # 全ての出力動画をzipアーカイブにまとめる関数
-    def create_zip(video_paths, zip_name):
+def create_zip(video_paths, zip_name):
         zip_path = os.path.join('downloads', zip_name)
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for video_path in video_paths:
@@ -97,13 +89,13 @@ from passlib.context import CryptContext
         return zip_path
 
     # Streamlitインターフェース
-    st.title("動画分割・結合・音声挿入アプリ")
+st.title("動画分割・結合・音声挿入アプリ")
 
-    uploaded_files = st.file_uploader("動画ファイルをアップロード", type=["mp4", "mov", "avi"], accept_multiple_files=True)
-    if uploaded_files:
+uploaded_files = st.file_uploader("動画ファイルをアップロード", type=["mp4", "mov", "avi"], accept_multiple_files=True)
+if uploaded_files:
         st.session_state.uploaded_videos = upload_videos(uploaded_files)
 
-    if st.button("変換"):
+if st.button("変換"):
         if 'uploaded_videos' in st.session_state:
             output_paths = process_and_merge_videos(st.session_state.uploaded_videos)
 
@@ -119,7 +111,7 @@ from passlib.context import CryptContext
 
             st.session_state.converted_videos = output_with_audio_paths
 
-    if 'converted_videos' in st.session_state:
+if 'converted_videos' in st.session_state:
         st.subheader("変換された動画")
         for video in st.session_state.converted_videos:
             video_name = os.path.basename(video)
@@ -144,7 +136,7 @@ from passlib.context import CryptContext
             with open(zip_path, "rb") as file:
                 st.download_button(label="全動画を1920x360に変換しzipでダウンロード", data=file, file_name="resized_videos_1920x360.zip", mime="application/zip")
 
-    if st.button("リセット"):
+if st.button("リセット"):
         delete_files()
         if 'uploaded_videos' in st.session_state:
             st.session_state.uploaded_videos = []
