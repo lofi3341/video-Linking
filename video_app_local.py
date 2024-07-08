@@ -3,12 +3,18 @@ import os
 import numpy as np
 import moviepy.editor as mp
 import zipfile
+import subprocess
 
 try:
     import cv2
 except ImportError as e:
     st.error(f"Error importing cv2: {e}")
     st.stop()
+
+if not os.path.exists('ffmpeg'):
+    st.info("Downloading ffmpeg...")
+    subprocess.run(["bash", "./download_ffmpeg.sh"])
+    st.success("ffmpeg successfully downloaded.")
 
 # ディレクトリの作成
 if not os.path.exists('uploads'):
@@ -64,7 +70,7 @@ def process_and_merge_videos(video_paths):
 def extract_audio(video_path):
     clip = mp.VideoFileClip(video_path)
     audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
-    clip.audio.write_audiofile(audio_path, codec='aac')
+    clip.audio.write_audiofile(audio_path, codec='pcm_s16le')
     return audio_path
 
 # 音声を挿入する関数
