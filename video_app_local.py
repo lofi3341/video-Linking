@@ -1,9 +1,18 @@
 import streamlit as st
-import cv2
 import os
 import numpy as np
 import moviepy.editor as mp
 import zipfile
+
+st.write("Starting the app")
+
+try:
+    import cv2
+except ImportError as e:
+    st.error(f"Error importing cv2: {e}")
+    st.stop()
+
+st.write("cv2 imported successfully")
 
 # ディレクトリの作成
 if not os.path.exists('uploads'):
@@ -12,6 +21,8 @@ if not os.path.exists('output'):
     os.makedirs('output')
 if not os.path.exists('downloads'):
     os.makedirs('downloads')
+
+st.write("Directories created")
 
 # 動画ファイルをアップロードする関数
 def upload_videos(uploaded_files):
@@ -97,12 +108,15 @@ def create_zip(video_paths, zip_name):
 
 # Streamlitインターフェース
 st.title("動画分割・結合・音声挿入アプリ")
+st.write("App started successfully")
 
 uploaded_files = st.file_uploader("動画ファイルをアップロード", type=["mp4", "mov", "avi"], accept_multiple_files=True)
 if uploaded_files:
     st.session_state.uploaded_videos = upload_videos(uploaded_files)
+    st.write("Videos uploaded successfully")
 
 if st.button("変換"):
+    st.write("Processing videos")
     if 'uploaded_videos' in st.session_state:
         output_paths = process_and_merge_videos(st.session_state.uploaded_videos)
 
@@ -117,6 +131,7 @@ if st.button("変換"):
             output_with_audio_paths.append(output_path)
 
         st.session_state.converted_videos = output_with_audio_paths
+        st.write("Videos processed successfully")
 
 if 'converted_videos' in st.session_state:
     st.subheader("変換された動画")
@@ -126,6 +141,7 @@ if 'converted_videos' in st.session_state:
             st.download_button(label=f"{video_name}をダウンロード", data=file, file_name=video_name, mime="video/mp4")
 
     if st.button("動画を2880x540に変換しまとめてzipでダウンロード"):
+        st.write("Resizing videos to 2880x540")
         resized_videos = []
         for video_path in st.session_state.converted_videos:
             resized_video_path = resize_video(video_path, 2880, 540)
@@ -135,6 +151,7 @@ if 'converted_videos' in st.session_state:
             st.download_button(label="全動画を2880x540に変換しzipでダウンロード", data=file, file_name="resized_videos_2880x540.zip", mime="application/zip")
 
     if st.button("動画を1920x360に変換しまとめてzipでダウンロード"):
+        st.write("Resizing videos to 1920x360")
         resized_videos = []
         for video_path in st.session_state.converted_videos:
             resized_video_path = resize_video(video_path, 1920, 360)
@@ -147,6 +164,3 @@ if st.button("リセット"):
     delete_files()
     if 'uploaded_videos' in st.session_state:
         st.session_state.uploaded_videos = []
-    if 'converted_videos' in st.session_state:
-        st.session_state.converted_videos = []
-    st.experimental_rerun()
