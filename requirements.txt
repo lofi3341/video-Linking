@@ -1,5 +1,6 @@
 streamlit
 opencv-python-headless
 numpy
-moviepy
+moviepy==1.0.3
 tqdm
+ffmpeg-python

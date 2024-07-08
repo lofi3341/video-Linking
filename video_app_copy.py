@@ -1,14 +1,8 @@
 import streamlit as st
 import os
 import numpy as np
-import moviepy.editor as mp
 import zipfile
-
-try:
-    import cv2
-except ImportError as e:
-    st.error(f"Error importing cv2: {e}")
-    st.stop()
+import ffmpeg
 
 # ディレクトリの作成
 if not os.path.exists('uploads'):
@@ -18,6 +12,8 @@ if not os.path.exists('output'):
 if not os.path.exists('downloads'):
     os.makedirs('downloads')
 
+st.write("Directories created")
+
 # 動画ファイルをアップロードする関数
 def upload_videos(uploaded_files):
     saved_files = []
@@ -26,58 +22,43 @@ def upload_videos(uploaded_files):
         with open(video_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
         saved_files.append(video_path)
-        st.write(f"Uploaded file saved at: {video_path}")
     return saved_files
 
 # 動画を分割し、結合する関数
 def process_and_merge_videos(video_paths):
     output_paths = []
     for video_path in video_paths:
-        st.write(f"Processing video: {video_path}")
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            st.error(f"Error opening video file: {video_path}")
-            continue
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-
-        output_path = os.path.join('output', 'merged_' + os.path.basename(video_path))
-        out = cv2.VideoWriter(output_path, fourcc, fps, (5760, 1080))
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            left_top = frame[:height//2, :width//2]
-            right_top = frame[:height//2, width//2:]
-            left_bottom = frame[height//2:, :width//2]
-
-            combined_frame = np.hstack((left_top, right_top, left_bottom))
-            out.write(combined_frame)
-
-        cap.release()
-        out.release()
-        output_paths.append(output_path)
+        # ffmpegを使用して動画の処理を行う例
+        (
+            ffmpeg
+            .input(video_path)
+            .output(os.path.join('output', 'merged_' + os.path.basename(video_path)), filter_complex='[0:v]split=3[v1][v2][v3];[v1][v2][v3]hstack=3[v]')
+            .run()
+        )
+        output_paths.append(os.path.join('output', 'merged_' + os.path.basename(video_path)))
     return output_paths
 
 # 動画から音声を抽出する関数
 def extract_audio(video_path):
-    clip = mp.VideoFileClip(video_path)
     audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
-    clip.audio.write_audiofile(audio_path, codec='pcm_s16le')
+    (
+        ffmpeg
+        .input(video_path)
+        .output(audio_path, codec='pcm_s16le')
+        .run()
+    )
     return audio_path
 
 # 音声を挿入する関数
 def insert_audio(video_path, audio_path):
-    video_clip = mp.VideoFileClip(video_path)
-    audio_clip = mp.AudioFileClip(audio_path)
-
-    final_clip = video_clip.set_audio(audio_clip)
     output_path = os.path.join('output', 'final_' + os.path.basename(video_path))
-    final_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
+    (
+        ffmpeg
+        .input(video_path)
+        .input(audio_path)
+        .output(output_path, vcodec='copy', acodec='aac')
+        .run()
+    )
     return output_path
 
 # 動画と音声を削除する関数
@@ -91,10 +72,13 @@ def delete_files():
 
 # 動画を指定したサイズに変換する関数
 def resize_video(video_path, width, height):
-    clip = mp.VideoFileClip(video_path)
-    resized_clip = clip.resize((width, height))
     output_path = os.path.join('output', f'resized_{os.path.basename(video_path)}')
-    resized_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
+    (
+        ffmpeg
+        .input(video_path)
+        .output(output_path, vf=f'scale={width}:{height}', vcodec='libx264', acodec='aac')
+        .run()
+    )
     return output_path
 
 # 全ての出力動画をzipアーカイブにまとめる関数
@@ -118,20 +102,19 @@ if st.button("変換"):
     st.write("Processing videos")
     if 'uploaded_videos' in st.session_state:
         output_paths = process_and_merge_videos(st.session_state.uploaded_videos)
-        if output_paths:
-            st.write("Videos processed successfully")
 
-            extracted_audio_paths = []
-            for video_path in st.session_state.uploaded_videos:
-                audio_path = extract_audio(video_path)
-                extracted_audio_paths.append(audio_path)
+        extracted_audio_paths = []
+        for video_path in st.session_state.uploaded_videos:
+            audio_path = extract_audio(video_path)
+            extracted_audio_paths.append(audio_path)
 
-            output_with_audio_paths = []
-            for video_path, audio_path in zip(output_paths, extracted_audio_paths):
-                output_path = insert_audio(video_path, audio_path)
-                output_with_audio_paths.append(output_path)
+        output_with_audio_paths = []
+        for video_path, audio_path in zip(output_paths, extracted_audio_paths):
+            output_path = insert_audio(video_path, audio_path)
+            output_with_audio_paths.append(output_path)
 
-            st.session_state.converted_videos = output_with_audio_paths
+        st.session_state.converted_videos = output_with_audio_paths
+        st.write("Videos processed successfully")
 
 if 'converted_videos' in st.session_state:
     st.subheader("変換された動画")
