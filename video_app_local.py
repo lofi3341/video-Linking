@@ -4,16 +4,6 @@ import numpy as np
 import moviepy.editor as mp
 import zipfile
 
-st.write("Starting the app")
-
-try:
-    import cv2
-except ImportError as e:
-    st.error(f"Error importing cv2: {e}")
-    st.stop()
-
-st.write("cv2 imported successfully")
-
 # ディレクトリの作成
 if not os.path.exists('uploads'):
     os.makedirs('uploads')
