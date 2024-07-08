@@ -4,6 +4,12 @@ import numpy as np
 import moviepy.editor as mp
 import zipfile
 
+try:
+    import cv2
+except ImportError as e:
+    st.error(f"Error importing cv2: {e}")
+    st.stop()
+
 # ディレクトリの作成
 if not os.path.exists('uploads'):
     os.makedirs('uploads')
@@ -11,8 +17,6 @@ if not os.path.exists('output'):
     os.makedirs('output')
 if not os.path.exists('downloads'):
     os.makedirs('downloads')
-
-st.write("Directories created")
 
 # 動画ファイルをアップロードする関数
 def upload_videos(uploaded_files):
