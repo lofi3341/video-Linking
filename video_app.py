@@ -5,13 +5,49 @@ import os
 import numpy as np
 import moviepy.editor as mp
 import zipfile
-from moviepy.editor import VideoFileClip
-from moviepy.config import change_settings
+from passlib.context import CryptContext
 
-change_settings({"FFMPEG_BINARY": "ffmpeg-imageio"})
+# パスワードのハッシュ化
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# 動画ファイルをアップロードする関数
-def upload_videos(uploaded_files):
+# 認証設定
+names = ["User1","User2"]
+usernames = ["gateoneapp","fmvapp"]
+passwords = ["login-gate","login-one"]
+
+# ハッシュ化されたパスワードを生成
+hashed_passwords = [pwd_context.hash(password) for password in passwords]
+
+# 認証情報の設定
+credentials = {
+    "usernames": {
+        "gateoneapp": {"name": "User1", "password": hashed_passwords[0]},
+        "fmvapp": {"name": "User2", "password": hashed_passwords[1]}
+    }
+}
+
+authenticator = stauth.Authenticate(
+    credentials,
+    "some_cookie_name",
+    "some_signature_key",
+    cookie_expiry_days=30
+)
+
+name, authentication_status, username = authenticator.login("main", "main", fields=("username", "password"))
+
+if authentication_status:
+    # 認証成功時のコード
+
+    # ディレクトリの作成
+    if not os.path.exists('uploads'):
+        os.makedirs('uploads')
+    if not os.path.exists('output'):
+        os.makedirs('output')
+    if not os.path.exists('downloads'):
+        os.makedirs('downloads')
+
+    # 動画ファイルをアップロードする関数
+    def upload_videos(uploaded_files):
         saved_files = []
         for uploaded_file in uploaded_files:
             video_path = os.path.join('uploads', uploaded_file.name)
@@ -21,7 +57,7 @@ def upload_videos(uploaded_files):
         return saved_files
 
     # 動画を分割し、結合する関数
-def process_and_merge_videos(video_paths):
+    def process_and_merge_videos(video_paths):
         output_paths = []
         for video_path in video_paths:
             cap = cv2.VideoCapture(video_path)
@@ -51,17 +87,14 @@ def process_and_merge_videos(video_paths):
         return output_paths
 
     # 動画から音声を抽出する関数
-def extract_audio(video_path):
-    clip = VideoFileClip(video_path)
-    audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
-    try:
-        clip.audio.write_audiofile(audio_path, codec='pcm_s16le', verbose=False, logger=None)
-    except BrokenPipeError:
-        pass  # BrokenPipeErrorを無視する
-    return audio_path
+    def extract_audio(video_path):
+        clip = mp.VideoFileClip(video_path)
+        audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
+        clip.audio.write_audiofile(audio_path, codec='pcm_s16le')
+        return audio_path
 
     # 音声を挿入する関数
-def insert_audio(video_path, audio_path):
+    def insert_audio(video_path, audio_path):
         video_clip = mp.VideoFileClip(video_path)
         audio_clip = mp.AudioFileClip(audio_path)
 
@@ -71,7 +104,7 @@ def insert_audio(video_path, audio_path):
         return output_path
 
     # 動画と音声を削除する関数
-def delete_files():
+    def delete_files():
         for file in os.listdir('uploads'):
             os.remove(os.path.join('uploads', file))
         for file in os.listdir('output'):
@@ -80,7 +113,7 @@ def delete_files():
             os.remove(os.path.join('downloads', file))
 
     # 動画を指定したサイズに変換する関数
-def resize_video(video_path, width, height):
+    def resize_video(video_path, width, height):
         clip = mp.VideoFileClip(video_path)
         resized_clip = clip.resize((width, height))
         output_path = os.path.join('output', f'resized_{os.path.basename(video_path)}')
@@ -88,7 +121,7 @@ def resize_video(video_path, width, height):
         return output_path
 
     # 全ての出力動画をzipアーカイブにまとめる関数
-def create_zip(video_paths, zip_name):
+    def create_zip(video_paths, zip_name):
         zip_path = os.path.join('downloads', zip_name)
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for video_path in video_paths:
@@ -96,13 +129,13 @@ def create_zip(video_paths, zip_name):
         return zip_path
 
     # Streamlitインターフェース
-st.title("動画分割・結合・音声挿入アプリ")
+    st.title("動画分割・結合・音声挿入アプリ")
 
-uploaded_files = st.file_uploader("動画ファイルをアップロード", type=["mp4", "mov", "avi"], accept_multiple_files=True)
-if uploaded_files:
+    uploaded_files = st.file_uploader("動画ファイルをアップロード", type=["mp4", "mov", "avi"], accept_multiple_files=True)
+    if uploaded_files:
         st.session_state.uploaded_videos = upload_videos(uploaded_files)
 
-if st.button("変換"):
+    if st.button("変換"):
         if 'uploaded_videos' in st.session_state:
             output_paths = process_and_merge_videos(st.session_state.uploaded_videos)
 
@@ -118,7 +151,7 @@ if st.button("変換"):
 
             st.session_state.converted_videos = output_with_audio_paths
 
-if 'converted_videos' in st.session_state:
+    if 'converted_videos' in st.session_state:
         st.subheader("変換された動画")
         for video in st.session_state.converted_videos:
             video_name = os.path.basename(video)
@@ -143,10 +176,21 @@ if 'converted_videos' in st.session_state:
             with open(zip_path, "rb") as file:
                 st.download_button(label="全動画を1920x360に変換しzipでダウンロード", data=file, file_name="resized_videos_1920x360.zip", mime="application/zip")
 
-if st.button("リセット"):
+    if st.button("リセット"):
         delete_files()
         if 'uploaded_videos' in st.session_state:
             st.session_state.uploaded_videos = []
         if 'converted_videos' in st.session_state:
             st.session_state.converted_videos = []
         st.experimental_rerun()
+
+elif authentication_status == False:
+    st.error("Username/password is incorrect")
+
+elif authentication_status == None:
+    st.warning("Please enter your username and password")
+
+# ログアウトボタン
+if st.button("Logout"):
+    authenticator.logout("main")
+    st.experimental_rerun()
