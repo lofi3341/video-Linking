@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import numpy as np
 import moviepy.editor as mp
+from moviepy.tools import subprocess_call
+from moviepy.config import get_setting
 import zipfile
 
 try:
@@ -62,7 +64,8 @@ def process_and_merge_videos(video_paths):
 def extract_audio(video_path):
     clip = mp.VideoFileClip(video_path)
     audio_path = os.path.join('output', 'audio_' + os.path.basename(video_path).replace('.mp4', '.wav'))
-    clip.audio.write_audiofile(audio_path, codec='pcm_s16le')
+    # 無効化するための進行状況表示設定
+    clip.audio.write_audiofile(audio_path, codec='pcm_s16le', logger=None)
     return audio_path
 
 # 音声を挿入する関数
@@ -72,7 +75,8 @@ def insert_audio(video_path, audio_path):
 
     final_clip = video_clip.set_audio(audio_clip)
     output_path = os.path.join('output', 'final_' + os.path.basename(video_path))
-    final_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
+    # 無効化するための進行状況表示設定
+    final_clip.write_videofile(output_path, codec='libx264', audio_codec='aac', logger=None)
     return output_path
 
 # 動画と音声を削除する関数
